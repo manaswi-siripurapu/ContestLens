@@ -1,122 +1,142 @@
-# LeetCode Contest Anomaly Explorer
+# ContestLens
 
-Surfaces statistically unusual patterns in LeetCode contest profiles using 7 independent signals.
+A personal side project built out of curiosity. ContestLens looks at publicly available LeetCode contest data and surfaces statistically unusual patterns in a profile — not to accuse anyone of anything, just to see what the numbers say.
+
+**Live demo → [contestlens.onrender.com](https://contestlens.onrender.com)**
+*(free tier — first load may take ~30s to wake up)*
 
 ---
 
-## Quick Start
+## What it does
+
+Enter a LeetCode username. ContestLens fetches their public contest history and profile data, runs it through 9 independent signals, and produces an **Anomaly Index from 0 to 10**.
+
+A high score means the profile has unusual statistical patterns. It does not mean cheating, it does not mean anything definitive. It's a data lens — use it as a starting point for curiosity, not a basis for any judgement.
+
+---
+
+## How to use it
+
+1. Open the live link above
+2. Type a LeetCode username in the search box
+3. Hit **Analyse**
+4. Toggle **Deep Analysis** in the sidebar for the strongest signal (adds ~15s)
+
+That's it. No login, no API key required.
+
+---
+
+## How it works internally
+
+**Data layer**
+
+LeetCode sits behind Cloudflare which blocks standard HTTP libraries at the TLS fingerprint level. ContestLens uses `curl_cffi` with `impersonate="chrome124"` — this replicates Chrome 124's exact TLS handshake so Cloudflare lets it through. Two GraphQL queries fire against `leetcode.com/graphql/` — one for profile data, one for contest history. Results are cached in SQLite for 24 hours so the same profile isn't re-fetched repeatedly.
+
+**Feature layer**
+
+9 independent signal functions in `features.py`, each scoring 0–10:
+
+| Signal | Weight | What it looks at |
+|---|---|---|
+| Solve time vs field | 20% | Whether harder problems took longer than easier ones |
+| Percentile vs problems solved | 16% | Contest percentile vs total practice volume |
+| Contest solve speed | 14% | Time to complete all 4 problems |
+| Ranking consistency | 12% | Variance in rank across all contests |
+| Rating velocity | 11% | Size of single-contest rating jumps |
+| Profile depth | 9% | Problems solved relative to rating bracket |
+| Hidden submission graph | 7% | Presence of a visible practice history |
+| Early performance | 6% | Rank in the first few contests |
+| Submission entropy | 4% | Day-of-week distribution of submissions |
+
+Each signal also returns a confidence level. Signals with insufficient data are excluded from scoring entirely — a new account with 2 contests doesn't get a false high score.
+
+**Scoring layer**
+
+`scorer.py` takes all 9 scores, applies confidence multipliers and weights, computes a weighted average, and adds an interaction bonus (up to +1.0) if both solve speed and profile depth are simultaneously flagged — those two together are statistically harder to explain than either alone.
+
+**Explanation layer**
+
+`explainer.py` sends the feature values to the Groq API (llama-3.3-70b) with a strictly constrained prompt — no accusatory language, 3–5 sentences, uncertainty baked in. Falls back to a deterministic rule-based explanation if no API key is set.
+
+---
+
+## Low level design
+
+```
+username input
+    │
+    ├── rate limit check  (SQLite, 10 req/hr per session)
+    ├── cache check       (SQLite, 24h TTL per username)
+    │
+    ├── fetcher.py
+    │     curl_cffi session (Chrome124 TLS)
+    │     GET leetcode.com  →  seed csrftoken cookie
+    │     POST /graphql/    →  profile query
+    │     POST /graphql/    →  contest history query
+    │
+    ├── features.py        →  9 signal functions → list of feature dicts
+    ├── scorer.py          →  weighted average + interaction bonus → 0-10
+    ├── explainer.py       →  Groq API → plain-English summary
+    │
+    └── app.py             →  Streamlit renders gauge, charts, breakdown
+```
+
+**SQLite schema:**
+- `profile_cache` — raw API JSON blobs, keyed by username, 24h TTL
+- `rate_limits` — session-scoped lookup counter
+- `score_distribution` — all scores ever computed, used for percentile ranking
+
+---
+
+## Validation
+
+Evaluated on 36 manually labeled profiles — 18 known legitimate (ICPC/CF grandmasters), 18 manually identified suspicious profiles from contest leaderboard review.
+
+| Threshold | Precision | Recall | F1 |
+|---|---|---|---|
+| 2.5 (optimal) | 100% | 83% | 0.909 |
+| 5.0 (conservative) | 100% | 78% | 0.875 |
+
+Zero false positives across all thresholds. Top discriminating signals: profile depth (+8.06 separation), percentile vs problems (+6.81), contest solve speed (+4.64).
+
+Scoring methodology is versioned (`v1.1-calibrated`) — weights are heuristic, not trained. The labeled dataset is private and not published.
+
+---
+
+## Run locally
 
 ```bash
-# 1. Clone / copy the project
-cd leetcode_anomaly
-
-# 2. Install dependencies
+git clone https://github.com/manaswi-siripurapu/ContestLens
+cd ContestLens
 pip install -r requirements.txt
-
-# 3. (Optional) Set your Anthropic API key for AI-powered explanations
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# 4. Run
 streamlit run app.py
 ```
 
-Open http://localhost:8501
-
----
-
-## Project Structure
-
-```
-leetcode_anomaly/
-├── app.py           # Streamlit UI — charts, layout, entry point
-├── fetcher.py       # LeetCode GraphQL API client + error handling
-├── features.py      # 7 anomaly signal computations
-├── scorer.py        # Weighted aggregation → anomaly index 0-10
-├── explainer.py     # Anthropic API explanation (with fallback)
-├── cache.py         # SQLite cache (24h TTL) + rate limiting
-└── requirements.txt
+Optional — add a Groq key for AI explanations:
+```bash
+export GROQ_API_KEY=gsk_...
 ```
 
 ---
 
-## The 7 Signals
-
-| Signal | Weight | What it measures |
-|---|---|---|
-| Rating velocity | 25% | Largest single-contest rating jump |
-| Contest solve speed | 22% | Fastest full contest completion time |
-| Ranking consistency | 18% | Variance in rank percentile across contests |
-| Profile depth | 15% | Problems solved vs expected for rating bracket |
-| Submission entropy | 10% | Day-of-week Shannon entropy of submissions |
-| Early performance | 6% | Rank in first 3 contests (newcomer baseline) |
-| Language distribution | 4% | Abnormal language split |
-
----
-
-## Output
-
-- **Anomaly Index 0-10** (not a "probability of cheating")
-- Per-signal score breakdown
-- AI-generated explanation (or rule-based fallback)
-- Rating trajectory chart with spike highlights
-- Contest rank over time scatter
-- Submission day-of-week bar chart
-- Language breakdown
-
----
-
-## Deployment (Railway)
+## Accuracy evaluation tools
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+# Collect labeled profiles
+python evaluate.py collect --suspicious user1 user2 --legitimate user3 user4 --output data/labeled.json
 
-railway login
-railway init
-railway up
-```
+# Run evaluation
+python evaluate.py eval --labeled data/labeled.json --report report.md
 
-Add `ANTHROPIC_API_KEY` as an environment variable in the Railway dashboard.
-
-Create a `Procfile`:
-```
-web: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+# Test known-clean profiles for calibration
+python cohort_test.py
 ```
 
 ---
 
-## Edge Cases Handled
+## Good to know
 
-- Username not found → clear error message
-- User with 0 contests → signals marked low-confidence, no false score
-- Network timeout → retries with exponential backoff, then user-facing error  
-- LeetCode rate limiting (429) → detected and surfaced to user
-- LeetCode 403 / geo-block → specific guidance to user
-- Missing `finishTimeInSeconds` → solve speed feature excluded
-- Calendar data empty / malformed → entropy feature excluded
-- All contests unattended → empty history handled
-- Anthropic API key missing → rule-based explanation fallback
-- Anthropic API error → error noted, fallback used, app continues
-- Very new account (< 3 contests) → low-confidence flags, disclaimer shown
-- Data quality reported as "insufficient" → explicit warning in UI
-
----
-
-## Legal & Ethical Notes
-
-- Uses LeetCode's **unofficial** GraphQL endpoint. Respect their ToS.
-- Cache all responses locally (24h TTL) to minimise load on LeetCode servers.
-- Rate-limited to **10 lookups/hour per session** to prevent abuse.
-- Results include a mandatory disclaimer on every analysis.
-- Never call this tool's output "proof of cheating."
-- If you believe a user is violating ToS, report to: https://support.leetcode.com
-
----
-
-## Limitations
-
-- No ground-truth labels — scoring is heuristic, not ML-trained.
-- LeetCode's unofficial API may break at any time.
-- Elite legitimate programmers (ICPC medalists) may score high on some signals.
-- Submission timestamps are day-level only (not hour-level).
-- Language-per-contest data is not available in the public API.
+- Scores are statistical patterns, not verdicts
+- LeetCode's GraphQL endpoint is unofficial — the tool may break if LeetCode updates their API
+- Cached for 24h per username, rate-limited to 10 lookups/hour
+- If you have genuine concerns about a user, report to [LeetCode directly](https://support.leetcode.com)

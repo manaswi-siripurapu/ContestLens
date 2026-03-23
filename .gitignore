@@ -4,3 +4,4 @@ cache.db
 venv/
 __pycache__/
 data/labeled.json
+report.md
