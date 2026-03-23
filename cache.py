@@ -33,7 +33,13 @@ def init_db() -> None:
                 count        INTEGER NOT NULL DEFAULT 0,
                 window_start REAL    NOT NULL
             );
-        """)
+        
+            CREATE TABLE IF NOT EXISTS score_distribution (
+                username    TEXT  NOT NULL,
+                score       REAL  NOT NULL,
+                quality     TEXT  NOT NULL,
+                recorded_at REAL  NOT NULL
+            );""")
 
 
 def _conn() -> sqlite3.Connection:

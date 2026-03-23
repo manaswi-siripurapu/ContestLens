@@ -34,7 +34,7 @@ def _clamp(val: float, lo: float = 0.0, hi: float = 10.0) -> float:
     return max(lo, min(hi, val))
 
 def _shannon_entropy(counts: list[int]) -> float:
-    """Shannon entropy in bits.  Returns 0 for empty / all-zero input."""
+    """Shannon entropy in bits. Returns 0 for empty / all-zero input."""
     total = sum(counts)
     if total == 0:
         return 0.0
@@ -70,11 +70,9 @@ def feature_rating_velocity(contests: list[dict]) -> dict:
     max_gain = max(deltas)
     avg_gain = _safe_mean(deltas)
 
-    # Scoring thresholds (rating points gained in a single contest)
-    # > 400 → near-certain anomaly; > 250 → suspicious; < 100 → normal
-    if max_gain >= 400:
+    if max_gain >= 500:
         score = _clamp(8.0 + (max_gain - 400) / 200)
-    elif max_gain >= 250:
+    elif max_gain >= 350:
         score = _clamp(5.0 + (max_gain - 250) / 100)
     elif max_gain >= 150:
         score = _clamp(2.0 + (max_gain - 150) / 100)
@@ -116,10 +114,6 @@ def feature_early_performance(contests: list[dict]) -> dict:
         }
 
     first_three = attended[:4]
-
-    # Ranking percentile: lower number = better rank = more suspicious for a newcomer
-    # We only flag if we have ranking AND a total-participants reference
-    # Fall back to absolute ranking if percentile unavailable
     ranks = [c["ranking"] for c in first_three if c.get("ranking", 0) > 0]
     if not ranks:
         return {
@@ -131,18 +125,15 @@ def feature_early_performance(contests: list[dict]) -> dict:
         }
 
     avg_early_rank = _safe_mean(ranks)
-    final_rating = attended[-1]["rating"]
 
-    # Heuristic: if first 3 avg rank < 500 AND they eventually reached high rating
-    # that's perfectly fine for a prodigy — lower weight on this feature
     if avg_early_rank < 100:
-        score = 8.0
+        score = 6.0
         desc = (
             f"Avg rank in first 3 contests: {avg_early_rank:.0f} "
             f"— elite-level debut (legitimate for prodigies; also a bot signal)"
         )
     elif avg_early_rank < 250:
-        score = 6.5
+        score = 4.5
         desc = f"Avg rank in first 3 contests: {avg_early_rank:.0f} — very strong debut"
     elif avg_early_rank < 1000:
         score = 3.5
@@ -168,7 +159,10 @@ def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
     """
     finishTimeInSeconds: how long (from contest start) until all problems submitted.
     Sub-15-minute completion of a 4-problem contest = extremely suspicious.
+    Score is gated by total_solved — a heavy grinder (800+) explaining
+    fast clears is plausible; someone with 30 problems is not.
     """
+    total_solved = (profile or {}).get("problems", {}).get("All", 0)
     attended = [c for c in contests if c.get("attended", True)]
     usable = [
         c for c in attended
@@ -176,8 +170,6 @@ def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
         and c.get("finish_seconds", 0) > 0
         and c.get("problems_solved", 0) > 0
     ]
-
-    total_solved = profile.get("problems", {}).get("All", 0)
 
     if not usable:
         return {
@@ -188,37 +180,30 @@ def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
             "confidence": "low",
         }
 
-    # Only examine contests where all problems were solved
     full_solves = [
         c for c in usable
         if c.get("problems_solved", 0) >= c.get("total_problems", 4)
     ]
 
     if not full_solves:
-        # Partial solves: check fastest relative to problems solved
         speeds = [
             c["finish_seconds"] / max(c["problems_solved"], 1)
             for c in usable
         ]
-        min_per_problem = min(speeds) / 60  # convert to minutes
+        min_per_problem = min(speeds) / 60
         count_used = len(usable)
         full_clear = False
     else:
         speeds = [c["finish_seconds"] for c in full_solves]
-        min_per_problem = min(speeds) / 60  # total minutes for full clear
+        min_per_problem = min(speeds) / 60
         count_used = len(full_solves)
         full_clear = True
 
-    # Thresholds for full 4-problem clear (typical LeetCode contest)
-    # < 15 min full clear → extremely suspicious (world-record territory)
-    # < 25 min → very suspicious
-    # < 40 min → mildly suspicious
-    # > 60 min → normal
     if full_clear:
         if min_per_problem < 15 and total_solved < 800:
             score = 9.0
             desc = f"Fastest full contest clear: {min_per_problem:.1f} min — superhuman speed"
-        elif min_per_problem < 20 and total_solved <400:
+        elif min_per_problem < 20 and total_solved < 400:
             score = 7.5
             desc = f"Fastest full contest clear: {min_per_problem:.1f} min — extremely fast"
         elif min_per_problem < 40:
@@ -231,7 +216,6 @@ def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
             score = 0.2
             desc = f"Fastest full contest clear: {min_per_problem:.1f} min — normal range"
     else:
-        # Per-problem speed
         if min_per_problem < 5:
             score = 7.0
             desc = f"Min time per problem: {min_per_problem:.1f} min — very fast per problem"
@@ -261,14 +245,12 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
     """
     Compare lifetime problem count against contest rating.
     A 2500-rated coder with only 30 problems solved is a red flag.
-    (But a new ICPC medalist might legitimately have few LeetCode problems.)
     """
-    total_solved = profile.get("problems", {}).get("All", 0)
-    hard_solved  = profile.get("problems", {}).get("Hard", 0)
+    total_solved   = profile.get("problems", {}).get("All", 0)
+    hard_solved    = profile.get("problems", {}).get("Hard", 0)
     contest_rating = profile.get("contest_rating", 0.0)
 
     if contest_rating < 1500:
-        # Unranked or beginner — not enough signal
         return {
             "score": 0.0,
             "value": total_solved,
@@ -277,14 +259,12 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
             "confidence": "low",
         }
 
-    # Expected minimum problems for a given rating bracket
-    # (rough community heuristic, not official)
     expected = {
         1500: 50,
         1800: 150,
         2000: 250,
-        2200: 350,
-        2400: 450,
+        2200: 400,
+        2400: 550,
         2600: 700,
     }
     threshold = 80
@@ -292,9 +272,12 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
         if contest_rating >= rating_floor:
             threshold = min_problems
 
-    if total_solved <= 70:
+    if total_solved <= 60:
+        score = 10.0
+        desc = f"{total_solved} problems solved at rating {contest_rating:.0f} — extremely shallow"
+    elif total_solved <= 100:
         score = 9.0
-        desc = f"0 problems solved, but contest rating {contest_rating:.0f} — impossible organically"
+        desc = f"{total_solved} problems solved at rating {contest_rating:.0f} — extremely shallow"
     elif total_solved < threshold * 0.3:
         score = 8.0
         desc = (
@@ -314,7 +297,6 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
         score = 0.0
         desc = f"{total_solved} problems solved — consistent with rating {contest_rating:.0f}"
 
-    # Hard-problem bonus: solving many hards is harder to fake
     if hard_solved > 40 and score > 3:
         score = max(0.5, score - 2.0)
         desc += f" (mitigated: {hard_solved} hards solved)"
@@ -337,13 +319,8 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
 def feature_submission_entropy(profile: dict) -> dict:
     """
     Day-of-week Shannon entropy of submission activity.
-    Bots tend to submit uniformly (7-day spread) OR on suspiciously narrow days.
-    Humans have moderate entropy with weekend/weeknight peaks.
-
-    Max theoretical entropy for 7 days = log2(7) ≈ 2.81 bits.
-    We flag both extremes:
-      - Very low (<1.0 bits): always submits on 1-2 days → bot or script cron job
-      - Very high and uniform (>2.75 bits): perfectly uniform over all 7 days → bot
+    Very low entropy = cron-job-like schedule.
+    Very high (perfectly uniform) entropy = also robotic.
     """
     calendar: dict = profile.get("calendar", {})
 
@@ -356,7 +333,6 @@ def feature_submission_entropy(profile: dict) -> dict:
             "confidence": "low",
         }
 
-    # Map timestamps to day of week (0=Mon … 6=Sun)
     dow_counts = [0] * 7
     total_entries = 0
     for ts_str, count in calendar.items():
@@ -378,13 +354,11 @@ def feature_submission_entropy(profile: dict) -> dict:
         }
 
     entropy = _shannon_entropy(dow_counts)
-    max_entropy = math.log2(7)  # ≈ 2.807
 
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     dominant_day = days[dow_counts.index(max(dow_counts))]
     dominant_pct = max(dow_counts) / total_entries * 100
 
-    # Flag criteria
     if entropy < 1.0:
         score = 7.0
         desc = (
@@ -409,10 +383,7 @@ def feature_submission_entropy(profile: dict) -> dict:
         desc = f"Slightly high entropy ({entropy:.2f} bits) — unusually uniform spread."
     else:
         score = 0.0
-        desc = (
-            f"Normal entropy ({entropy:.2f} bits) — "
-            f"typical human submission pattern."
-        )
+        desc = f"Normal entropy ({entropy:.2f} bits) — typical human submission pattern."
 
     return {
         "score": round(score, 2),
@@ -432,12 +403,9 @@ def feature_submission_entropy(profile: dict) -> dict:
 
 def feature_ranking_consistency(contests: list[dict]) -> dict:
     """
-    Look at the variance in rank percentile across contests.
-    Real coders have moderate variance (off days, hard contests, etc).
-    Bots / paid solvers tend to be suspiciously consistent in the top 0.x%.
-
-    We also check for impossible rankings:
-    ranking=1 or ranking < 5 multiple times → extreme outlier.
+    Variance in rank across contests.
+    Suspiciously consistent top-N finishes across many contests is a red flag.
+    Real coders have off days.
     """
     attended = [c for c in contests if c.get("attended", True)]
 
@@ -467,7 +435,6 @@ def feature_ranking_consistency(contests: list[dict]) -> dict:
     score = 0.0
     details = []
 
-    # Multiple rank=1 or rank<5 finishes
     if top_5_count >= 3 and len(ranks) < 20:
         score += 4.0
         details.append(f"Ranked top 5 in {top_5_count} contests")
@@ -475,7 +442,6 @@ def feature_ranking_consistency(contests: list[dict]) -> dict:
         score += 2.0
         details.append(f"Ranked top 5 in {top_5_count} contest(s)")
 
-    # Low coefficient of variation = robot-like consistency
     if len(ranks) >= 5:
         if cv < 0.15 and _safe_mean(ranks) < 500:
             score += 3.5
@@ -503,15 +469,14 @@ def feature_ranking_consistency(contests: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Feature 7 — Language Switching
+# Feature 7 — Language Distribution
 # ---------------------------------------------------------------------------
 
 def feature_language_switching(profile: dict) -> dict:
     """
-    Bots / cheaters sometimes solve using completely different languages in
-    different periods because they're copying from multiple solvers.
-    We can only check the overall language distribution — not per-contest.
-    Suspicious: top-2 languages have nearly equal problem counts (split personality).
+    Near-zero weight signal (1%). Kept for completeness but scores are
+    zeroed out — evaluation showed negative separation (-0.89) meaning
+    legitimate users triggered this more than suspicious ones.
     """
     langs: dict[str, int] = profile.get("languages", {})
 
@@ -535,20 +500,15 @@ def feature_language_switching(profile: dict) -> dict:
     else:
         second_lang, second_pct = None, 0
 
-    # Normal: one dominant language (>70%).
-    # Suspicious: two languages neck-and-neck at 40-60% each (potential split account).
     if top_pct < 40 and second_pct > 30:
-        score = 5.0
-        desc = (
-            f"Language split: {top_lang} ({top_pct:.0f}%) / "
-            f"{second_lang} ({second_pct:.0f}%) — abnormally even split"
-        )
+        score = 0.0
+        desc = f"Language split: {top_lang} ({top_pct:.0f}%) / {second_lang} ({second_pct:.0f}%) — near-zero weight signal"
     elif top_pct < 55:
-        score = 2.5
-        desc = f"Two primary languages used roughly equally ({top_lang} {top_pct:.0f}%)"
+        score = 0.0
+        desc = f"Two primary languages ({top_lang} {top_pct:.0f}%) — near-zero weight signal"
     else:
-        score = 0.5
-        desc = f"Dominant language: {top_lang} ({top_pct:.0f}% of problems) — normal"
+        score = 0.0
+        desc = f"Dominant language: {top_lang} ({top_pct:.0f}%) — normal"
 
     return {
         "score": round(score, 2),
@@ -567,30 +527,27 @@ def feature_language_switching(profile: dict) -> dict:
 
 def feature_hidden_graph(profile: dict, contests: list[dict]) -> dict:
     """
-    A hidden submission graph is a mild but meaningful signal — especially
-    when combined with high contest rating.
+    Transparency indicator — kept at low-to-medium weight (7%).
 
-    Reasoning:
-      - Legitimate high-rated users rarely hide their graphs because a rich
-        submission history is a badge of honour in competitive programming.
-      - Accounts used purely for contest manipulation have nothing to show
-        in their daily practice history, so hiding it is the rational move.
+    IMPORTANT: Hiding a submission graph is a legitimate privacy choice.
+    This signal does NOT penalise privacy. It flags a specific combination:
+    an account performing at elite contest level with no visible daily practice
+    AND a shallow problem history. That combination is statistically unusual.
+
+    This signal should never be the sole or primary reason for a high score.
+    It is a weak corroborating indicator — meaningful only alongside other signals.
 
     Scoring:
-      - Hidden + high rating (≥ 2000): strong signal (6.0)
-      - Hidden + moderate rating (1500–2000): moderate signal (3.5)
-      - Hidden + low/no rating: weak signal (1.5) — many casual users hide it
-      - Not hidden: 0.0
-
-    Confidence is always "medium" because we can't distinguish "hidden" from
-    "genuinely empty calendar due to API unavailability". The `calendar_hidden`
-    flag in the profile already accounts for this by requiring the account to
-    have solved ≥ 10 problems before flagging.
+      - Hidden + high rating (≥ 2000) + ≥ 5 contests + < 400 problems: 8.0
+        (shallow practice + hidden graph + elite performance = harder to explain)
+      - Hidden + moderate activity: 4.5
+      - Hidden + 50+ problems: 1.0 (likely privacy preference)
+      - Hidden + low activity: 0.0 (almost certainly just privacy)
     """
-    calendar_hidden  = profile.get("calendar_hidden", False)
-    contest_rating   = profile.get("contest_rating", 0.0)
-    attended_count   = profile.get("attended_count", 0)
-    total_solved     = profile.get("problems", {}).get("All", 0)
+    calendar_hidden = profile.get("calendar_hidden", False)
+    contest_rating  = profile.get("contest_rating", 0.0)
+    attended_count  = profile.get("attended_count", 0)
+    total_solved    = profile.get("problems", {}).get("All", 0)
 
     if not calendar_hidden:
         return {
@@ -601,32 +558,31 @@ def feature_hidden_graph(profile: dict, contests: list[dict]) -> dict:
             "confidence":  "high" if profile.get("calendar") else "low",
         }
 
-    # Graph is hidden — now score based on how suspicious that is in context
     if contest_rating >= 2000 and attended_count >= 5 and total_solved < 400:
         score = 8.0
-        desc  = (
-            f"Submission graph is hidden. At rating {contest_rating:.0f} with "
-            f"{attended_count} contests attended, hiding practice history is "
-            "statistically unusual for legitimate high performers."
+        desc = (
+            f"Submission graph hidden. Rating {contest_rating:.0f}, "
+            f"{attended_count} contests, only {total_solved} problems solved — "
+            "elite performance with no visible practice trail."
         )
     elif contest_rating >= 1500 or attended_count >= 3:
-        score = 4.5
-        desc  = (
-            f"Submission graph is hidden. Active contest participant "
+        score = 2.0
+        desc = (
+            f"Submission graph hidden. Active contest participant "
             f"(rating {contest_rating:.0f}, {attended_count} contests) "
             "with no visible practice history."
         )
     elif total_solved > 50:
         score = 1.0
-        desc  = (
-            f"Submission graph is hidden despite {total_solved} problems solved. "
-            "May be a privacy preference."
+        desc = (
+            f"Submission graph hidden despite {total_solved} problems solved. "
+            "Likely a privacy preference — low weight signal."
         )
     else:
         score = 0.0
-        desc  = (
-            "Submission graph is hidden. Low activity level — "
-            "likely a privacy preference rather than an anomaly signal."
+        desc = (
+            "Submission graph hidden. Very low activity — "
+            "almost certainly a privacy preference, not an anomaly."
         )
 
     return {
@@ -646,31 +602,20 @@ def feature_percentile_vs_problems(profile: dict) -> dict:
     """
     Directly relates contest top-percentile to total problems solved.
 
-    Why this is stronger than profile_depth alone:
-      profile_depth compares problems solved against a rating BRACKET
-      (e.g. "2400-rated users typically solve 250+ problems").
-      But rating can be gamed in a handful of contests.
+    Top percentile is harder to inflate than rating — it reflects where you
+    stand against every human who competed that specific week. Being top 1%
+    globally with 24 problems solved is a near-impossible combination.
 
-      Top percentile is harder to inflate — it reflects where you stand
-      against every human who competed that specific week. Being in the
-      top 1% globally with 24 problems solved is a near-impossible
-      combination through legitimate practice.
-
-    The signal is the RATIO: percentile rank / problems solved.
-    A top-1% finisher who has solved 500 problems → ratio = 0.002 → normal.
-    A top-1% finisher who has solved 20 problems  → ratio = 0.05  → extreme.
-
-    Expected minimums (community heuristic):
-      Top 1%   → ≥ 200 problems
-      Top 5%   → ≥ 100 problems
-      Top 10%  → ≥  50 problems
-      Top 25%  → ≥  20 problems
+    Bands (percentile ceiling → expected minimum problems):
+      Top 1.5% → ≥ 700  (refined from community analysis)
+      Top 5%   → ≥ 200
+      Top 10%  → ≥ 100
+      Top 25%  → ≥ 50
     """
     top_pct      = profile.get("top_percentage", 100.0)
     total_solved = profile.get("problems", {}).get("All", 0)
     attended     = profile.get("attended_count", 0)
 
-    # Need at least 3 contests to have a meaningful percentile
     if attended < 3 or top_pct is None:
         return {
             "score":       0.0,
@@ -680,7 +625,6 @@ def feature_percentile_vs_problems(profile: dict) -> dict:
             "confidence":  "low",
         }
 
-    # No percentile data (unranked / never finished)
     if top_pct >= 99.0:
         return {
             "score":       0.0,
@@ -690,13 +634,10 @@ def feature_percentile_vs_problems(profile: dict) -> dict:
             "confidence":  "low",
         }
 
-    # Expected minimum problems for each percentile band
-    # Format: (percentile_ceiling, expected_min_problems)
-    # e.g. if top_pct <= 1.0, user is in top 1% → expect >= 200 problems
     bands = [
         (1.5,  700),
         (5.0,  200),
-        (10.0,  100),
+        (10.0, 100),
         (25.0,  50),
     ]
 
@@ -708,33 +649,28 @@ def feature_percentile_vs_problems(profile: dict) -> dict:
             band_label   = f"top {ceiling:.0f}%"
             break
 
-    # Not in a flaggable percentile band (worse than top 25%)
     if expected_min is None:
         return {
             "score":       0.0,
             "value":       top_pct,
             "label":       "Percentile vs problems solved",
-            "description": (
-                f"Top percentile {top_pct:.1f}% — outside suspicious range."
-            ),
+            "description": f"Top percentile {top_pct:.1f}% — outside suspicious range.",
             "confidence":  "medium",
         }
 
-    # How far below the expected minimum are they?
     if total_solved == 0:
-        deficit_ratio = 1.0   # completely empty
+        deficit_ratio = 1.0
     else:
         deficit_ratio = max(0.0, 1.0 - (total_solved / expected_min))
 
-    # Score based on deficit
     if total_solved <= 50:
-        score = 10
+        score = 10.0
         desc  = (
-            f"Zero problems solved but ranked {band_label} globally "
+            f"Only {total_solved} problems solved but ranked {band_label} globally "
             f"({top_pct:.1f}%). Organically impossible."
         )
     elif deficit_ratio >= 0.85:
-        score = 9
+        score = 9.0
         desc  = (
             f"Only {total_solved} problems solved while ranked {band_label} "
             f"({top_pct:.1f}%). Expected ≥ {expected_min} — "
@@ -792,7 +728,7 @@ def compute_all_features(
     """
     Run all feature functions and return the full list.
     Pass username + include_contest_timing=True to enable the
-    live contest ranking API check (slower — 1 extra API call per contest).
+    live contest ranking API check (slower — ~15s per lookup).
     """
     feats = [
         feature_rating_velocity(contests),
@@ -811,6 +747,6 @@ def compute_all_features(
             from feature_contest_timing import feature_solve_time_vs_field
             feats.append(feature_solve_time_vs_field(username, contests))
         except Exception:
-            pass   # non-fatal — don't crash main flow
+            pass
 
     return feats

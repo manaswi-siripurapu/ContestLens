@@ -1,0 +1,152 @@
+{
+  "methodology": "v1.0-heuristic",
+  "threshold": 4.0,
+  "results": [
+    {
+      "username": "lee215",
+      "note": "Top 1 all-time LeetCode reputation, legendary solution writer",
+      "score": 1.67,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "StefanPochmann",
+      "note": "Extremely high reputation (~100k+), clean and optimal solutions",
+      "score": 2.11,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "votrubac",
+      "note": "Top contributor, solutions appear in most problems",
+      "score": 1.09,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "niits",
+      "note": "Top 3 reputation leaderboard, consistent contributor",
+      "score": 0.66,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "rahulvarma5297",
+      "note": "Top 5 reputation, strong contest + discuss presence",
+      "score": 0.56,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "hiepit",
+      "note": "Top 10 reputation, frequent high-quality solutions",
+      "score": 0.85,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "DBabichev",
+      "note": "Known for math-heavy and advanced solutions",
+      "score": 0.93,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "jianchao-li",
+      "note": "Well-known for structured explanations",
+      "score": 0.68,
+      "verdict": "Very low",
+      "quality": "partial",
+      "fired_signals": []
+    },
+    {
+      "username": "archit91",
+      "note": "Popular contributor, appears often in discussions",
+      "score": 1.01,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "OldCodingFarmer",
+      "note": "Veteran contributor with consistent solutions",
+      "score": 0.31,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "fun4LeetCode",
+      "note": "One of the earliest and most respected contributors",
+      "score": 0.82,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "rock",
+      "note": "High reputation user with strong consistency",
+      "score": 1.09,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "AlecLC",
+      "note": "Active contributor with many accepted solutions",
+      "score": 0.25,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "Spaulding_",
+      "note": "Top 20 reputation, strong problem-solving presence",
+      "score": 0.54,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "GraceMeng",
+      "note": "Highly ranked contributor in discuss section",
+      "score": 0.36,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    },
+    {
+      "username": "issac3",
+      "note": "Frequent contributor with strong acceptance rate",
+      "score": 0.05,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "dietpepsi",
+      "note": "Consistent contributor in discussion solutions",
+      "score": 0.94,
+      "verdict": "Very low",
+      "quality": "insufficient",
+      "fired_signals": []
+    },
+    {
+      "username": "shawngao",
+      "note": "Recognized contributor with strong algorithmic solutions",
+      "score": 0.67,
+      "verdict": "Very low",
+      "quality": "good",
+      "fired_signals": []
+    }
+  ],
+  "issues": [],
+  "calibrated": true
+}

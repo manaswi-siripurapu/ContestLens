@@ -3,3 +3,4 @@ cache.db
 *.db
 venv/
 __pycache__/
+data/labeled.json
