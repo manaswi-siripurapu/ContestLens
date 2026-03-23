@@ -43,9 +43,7 @@ import features as fm
 import scorer as sm
 
 
-# ---------------------------------------------------------------------------
 # Core metrics
-# ---------------------------------------------------------------------------
 
 def compute_metrics(results: list[dict], threshold: float) -> dict:
     tp = fp = tn = fn = 0
@@ -98,9 +96,7 @@ def confusion_matrix_str(m: dict) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # Signal analysis
-# ---------------------------------------------------------------------------
 
 def signal_importance(results: list[dict]) -> list[dict]:
     """
@@ -173,9 +169,7 @@ def analyse_errors(results: list[dict], threshold: float) -> dict:
     return {"false_positives": fps, "false_negatives": fns}
 
 
-# ---------------------------------------------------------------------------
 # Score all profiles in a labeled dataset
-# ---------------------------------------------------------------------------
 
 def score_all(labeled: list[dict]) -> list[dict]:
     results = []
@@ -212,9 +206,7 @@ def score_all(labeled: list[dict]) -> list[dict]:
     return results
 
 
-# ---------------------------------------------------------------------------
 # Markdown report generator
-# ---------------------------------------------------------------------------
 
 def build_report(
     results: list[dict],
@@ -341,9 +333,7 @@ def build_report(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Data collector
-# ---------------------------------------------------------------------------
 
 def collect_profiles(
     usernames: list[str],
@@ -387,9 +377,7 @@ def collect_profiles(
     print(f"\nDataset: {len(existing)} total profiles saved to {p}")
 
 
-# ---------------------------------------------------------------------------
 # CLI
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(

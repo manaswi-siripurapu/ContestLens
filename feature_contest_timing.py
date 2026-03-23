@@ -25,9 +25,7 @@ IMPERSONATE = "chrome124"
 RANKING_URL = "https://leetcode.com/contest/api/ranking/{contest_slug}/"
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 def _get_contest_slugs(contest_history: list[dict]) -> list[tuple]:
     """'Weekly Contest 420' → 'weekly-contest-420'"""
@@ -182,9 +180,7 @@ def _inversion_score(times: list[float]) -> tuple[float, str]:
     return round(score, 2), worst_desc
 
 
-# ---------------------------------------------------------------------------
 # Public feature function
-# ---------------------------------------------------------------------------
 
 def feature_solve_time_vs_field(
     username: str,
@@ -284,11 +280,8 @@ def feature_solve_time_vs_field(
             "confidence":  "low",
         }
 
-    # -------------------------------------------------------------------
     # Aggregate score
-    # Reverse order is the strongest signal — use the max inversion score
-    # across contests as the base, then add bonuses for the other signals.
-    # -------------------------------------------------------------------
+    # Reverse order is the strongest signal — use the max inversion score across contests as the base, then add bonuses for the other signals.
     score = 0.0
     parts = []
 

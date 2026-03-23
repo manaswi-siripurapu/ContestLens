@@ -20,9 +20,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def _safe_mean(vals: list[float]) -> float:
     return statistics.mean(vals) if vals else 0.0
@@ -42,9 +40,7 @@ def _shannon_entropy(counts: list[int]) -> float:
     return -sum(p * math.log2(p) for p in probs)
 
 
-# ---------------------------------------------------------------------------
 # Feature 1 — Rating Velocity
-# ---------------------------------------------------------------------------
 
 def feature_rating_velocity(contests: list[dict]) -> dict:
     """
@@ -93,9 +89,7 @@ def feature_rating_velocity(contests: list[dict]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 2 — Early-Contest Performance
-# ---------------------------------------------------------------------------
 
 def feature_early_performance(contests: list[dict]) -> dict:
     """
@@ -150,10 +144,7 @@ def feature_early_performance(contests: list[dict]) -> dict:
         "confidence": "medium",
     }
 
-
-# ---------------------------------------------------------------------------
 # Feature 3 — Solve Speed
-# ---------------------------------------------------------------------------
 
 def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
     """
@@ -237,9 +228,7 @@ def feature_solve_speed(contests: list[dict], profile: dict = None) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 4 — Profile Depth vs Rating
-# ---------------------------------------------------------------------------
 
 def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
     """
@@ -312,9 +301,7 @@ def feature_profile_depth(profile: dict, contests: list[dict]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 5 — Submission Pattern Entropy
-# ---------------------------------------------------------------------------
 
 def feature_submission_entropy(profile: dict) -> dict:
     """
@@ -397,9 +384,7 @@ def feature_submission_entropy(profile: dict) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 6 — Contest Ranking Consistency
-# ---------------------------------------------------------------------------
 
 def feature_ranking_consistency(contests: list[dict]) -> dict:
     """
@@ -468,9 +453,7 @@ def feature_ranking_consistency(contests: list[dict]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 7 — Language Distribution
-# ---------------------------------------------------------------------------
 
 def feature_language_switching(profile: dict) -> dict:
     """
@@ -521,9 +504,7 @@ def feature_language_switching(profile: dict) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 8 — Hidden Submission Graph
-# ---------------------------------------------------------------------------
 
 def feature_hidden_graph(profile: dict, contests: list[dict]) -> dict:
     """
@@ -594,9 +575,7 @@ def feature_hidden_graph(profile: dict, contests: list[dict]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Feature 9 — Percentile vs Problems Solved
-# ---------------------------------------------------------------------------
 
 def feature_percentile_vs_problems(profile: dict) -> dict:
     """
@@ -715,9 +694,7 @@ def feature_percentile_vs_problems(profile: dict) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Master feature extractor
-# ---------------------------------------------------------------------------
 
 def compute_all_features(
     profile: dict,

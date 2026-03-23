@@ -52,14 +52,7 @@ Rules:
 7. End with: "This analysis is automated and should not be used as definitive evidence."
 """
 
-# ---------------------------------------------------------------------------
-# Groq models you can use (pick one):
-#   llama-3.3-70b-versatile   — best quality, still very fast
-#   llama-3.1-8b-instant      — fastest + cheapest
-#   mixtral-8x7b-32768        — good for longer outputs
-# ---------------------------------------------------------------------------
 GROQ_MODEL = "llama-3.3-70b-versatile"
-
 
 def generate_explanation(
     username: str,

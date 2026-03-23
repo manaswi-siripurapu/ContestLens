@@ -28,9 +28,7 @@ except ImportError as exc:
         "Then add  curl-cffi>=0.6.0  to requirements.txt"
     ) from exc
 
-# ---------------------------------------------------------------------------
 # Config
-# ---------------------------------------------------------------------------
 LC_ORIGIN   = "https://leetcode.com"
 GRAPHQL_URL = f"{LC_ORIGIN}/graphql/"
 SEED_URL    = f"{LC_ORIGIN}/"
@@ -43,9 +41,7 @@ INTER_SLEEP  = 1.5
 # curl_cffi impersonation target — must match a supported Chrome version
 IMPERSONATE = "chrome124"
 
-# ---------------------------------------------------------------------------
 # Exceptions
-# ---------------------------------------------------------------------------
 class LeetCodeError(Exception): pass
 class UserNotFoundError(LeetCodeError): pass
 class PrivateProfileError(LeetCodeError): pass
@@ -53,9 +49,7 @@ class RateLimitedError(LeetCodeError): pass
 class NetworkError(LeetCodeError): pass
 class ParseError(LeetCodeError): pass
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def _safe_get(d: Any, *keys, default=None) -> Any:
     try:
@@ -165,9 +159,7 @@ def _gql(session: curl_requests.Session, query: str,
         "Try again in a minute."
     )
 
-# ---------------------------------------------------------------------------
 # GraphQL queries
-# ---------------------------------------------------------------------------
 
 _PROFILE_QUERY = """
 query getUserProfile($username: String!) {
@@ -200,9 +192,7 @@ query userContestRankingHistory($username: String!) {
 }
 """
 
-# ---------------------------------------------------------------------------
 # Parsers
-# ---------------------------------------------------------------------------
 
 def _parse_profile(data: dict, username: str) -> dict:
     matched = _safe_get(data, "data", "matchedUser")
@@ -291,9 +281,7 @@ def _parse_contest_history(data: dict) -> list[dict]:
     history.sort(key=lambda x: x["start_time"])
     return history
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 def fetch_profile(username: str) -> dict:
     username = username.strip()

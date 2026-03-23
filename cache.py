@@ -16,9 +16,7 @@ RATE_LIMIT_MAX = 10              # lookups per window
 RATE_LIMIT_WINDOW = 3_600        # 1 hour in seconds
 
 
-# ---------------------------------------------------------------------------
 # DB initialisation
-# ---------------------------------------------------------------------------
 
 def init_db() -> None:
     with _conn() as c:
@@ -48,9 +46,7 @@ def _conn() -> sqlite3.Connection:
     return con
 
 
-# ---------------------------------------------------------------------------
 # Profile cache
-# ---------------------------------------------------------------------------
 
 def get_cached(username: str) -> Optional[dict]:
     """Return cached profile dict or None if missing / expired."""
@@ -95,9 +91,7 @@ def cache_age_minutes(username: str) -> Optional[float]:
     return (time.time() - row["cached_at"]) / 60
 
 
-# ---------------------------------------------------------------------------
 # Rate limiting
-# ---------------------------------------------------------------------------
 
 def check_rate_limit(session_id: str) -> tuple[bool, int]:
     """

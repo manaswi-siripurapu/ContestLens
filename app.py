@@ -31,9 +31,7 @@ except Exception:
     def record_score(*a, **k): pass
     def get_percentile(*a, **k): return {"enough_data": False, "total_profiles": 0}
 
-# ---------------------------------------------------------------------------
 # Page config
-# ---------------------------------------------------------------------------
 
 st.set_page_config(
     page_title="ContestLens",
@@ -42,9 +40,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ---------------------------------------------------------------------------
 # Session init
-# ---------------------------------------------------------------------------
 
 cache.init_db()
 
@@ -53,9 +49,7 @@ if "session_id" not in st.session_state:
 
 SESSION_ID = st.session_state["session_id"]
 
-# ---------------------------------------------------------------------------
 # Styles
-# ---------------------------------------------------------------------------
 
 st.markdown("""
 <style>
@@ -81,9 +75,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
 # Sidebar
-# ---------------------------------------------------------------------------
 
 with st.sidebar:
     st.header("⚙️ Settings")
@@ -119,9 +111,7 @@ This is a data exploration tool, not a moderation tool. A high score means
 👉 [Report concerns to LeetCode](https://support.leetcode.com)
 """)
 
-# ---------------------------------------------------------------------------
 # How it works — expander
-# ---------------------------------------------------------------------------
 
 with st.expander("How the Anomaly Index is calculated", expanded=False):
     st.markdown("""
@@ -168,11 +158,9 @@ Always apply your own judgement. This tool is a starting point for curiosity,
 not a basis for action.
 """)
 
-# ---------------------------------------------------------------------------
 # Header
-# ---------------------------------------------------------------------------
 
-st.title("🔍 ContestLens")
+st.title("ContestLens")
 st.markdown(
     "Enter a LeetCode username to explore statistical patterns "
     "in their contest history."
@@ -189,9 +177,7 @@ Scores should never be the sole basis for any action or judgement against a user
 
 st.markdown("---")
 
-# ---------------------------------------------------------------------------
 # Input
-# ---------------------------------------------------------------------------
 
 col_in, col_btn, col_pad = st.columns([3, 1, 3])
 
@@ -205,9 +191,7 @@ with col_in:
 with col_btn:
     analyse_clicked = st.button("Analyse", type="primary", use_container_width=True)
 
-# ---------------------------------------------------------------------------
 # Validation
-# ---------------------------------------------------------------------------
 
 def validate_username(u: str) -> tuple[bool, str]:
     u = u.strip()
@@ -222,9 +206,7 @@ def validate_username(u: str) -> tuple[bool, str]:
         return False, "Username contains invalid characters."
     return True, ""
 
-# ---------------------------------------------------------------------------
 # Chart helpers
-# ---------------------------------------------------------------------------
 
 def _chart_rating_trajectory(contests: list[dict]) -> go.Figure | None:
     attended = [c for c in contests if c.get("rating", 0) > 0]
@@ -409,18 +391,14 @@ def _gauge_chart(score: float, severity: str) -> go.Figure:
     fig.update_layout(height=250, margin=dict(t=20, b=20, l=20, r=20))
     return fig
 
-# ---------------------------------------------------------------------------
 # Retry helper
-# ---------------------------------------------------------------------------
 
 def _retry_button(username: str) -> None:
     if st.button("🔄 Retry", key=f"retry_btn_{username}"):
         st.session_state[f"retry_{username}"] = True
         st.rerun()
 
-# ---------------------------------------------------------------------------
 # Main analysis
-# ---------------------------------------------------------------------------
 
 def run_analysis(username: str, api_key: str, deep: bool = False) -> None:
     username = username.strip()
@@ -686,9 +664,7 @@ contest behaviour, please report directly to
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
 
 if analyse_clicked:
     valid, err_msg = validate_username(username_input)
