@@ -2,8 +2,8 @@
 
 A personal side project built out of curiosity. ContestLens looks at publicly available LeetCode contest data and surfaces statistically unusual patterns in a profile — not to accuse anyone of anything, just to see what the numbers say.
 
-**Live demo → [contestlens.onrender.com](https://contestlens.onrender.com)**
-*(free tier — first load may take ~30s to wake up)*
+**Live demo → [contestlens-0tza.onrender.com](https://contestlens-0tza.onrender.com)**
+*(free tier — first load may take ~30s-2m to wake up)*
 
 ---
 
